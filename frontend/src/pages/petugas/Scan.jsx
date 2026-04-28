@@ -1,11 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { ArrowLeft, Keyboard, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+async function safeStop(scanner, runningRef) {
+    try {
+        const st = scanner.getState ? scanner.getState() : null;
+        const canStop =
+            st === Html5QrcodeScannerState.SCANNING ||
+            st === Html5QrcodeScannerState.PAUSED ||
+            runningRef.current;
+        if (canStop) {
+            await scanner.stop();
+        }
+    } catch (_) {
+        /* ignore benign stop errors */
+    }
+    runningRef.current = false;
+}
 
 export default function Scan() {
     const nav = useNavigate();
@@ -13,10 +29,11 @@ export default function Scan() {
     const [manual, setManual] = useState("");
     const [starting, setStarting] = useState(false);
     const scannerRef = useRef(null);
+    const runningRef = useRef(false);
 
     useEffect(() => {
         if (mode !== "camera") return;
-        let stopped = false;
+        let cancelled = false;
         const id = "qr-scanner-region";
         const el = document.getElementById(id);
         if (!el) return;
@@ -28,26 +45,34 @@ export default function Scan() {
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 240, height: 240 } },
                 (decodedText) => {
-                    if (stopped) return;
-                    stopped = true;
-                    scanner
-                        .stop()
-                        .catch(() => {})
-                        .finally(() => nav(`/petugas/catat/${decodedText}`));
+                    if (cancelled) return;
+                    cancelled = true;
+                    safeStop(scanner, runningRef).finally(() =>
+                        nav(`/petugas/catat/${decodedText}`),
+                    );
                 },
                 () => {},
             )
-            .then(() => setStarting(false))
+            .then(() => {
+                if (cancelled) {
+                    safeStop(scanner, runningRef);
+                    return;
+                }
+                runningRef.current = true;
+                setStarting(false);
+            })
             .catch(() => {
                 setStarting(false);
-                toast.error("Tidak dapat mengakses kamera. Gunakan input manual.");
-                setMode("manual");
+                if (!cancelled) {
+                    toast.error(
+                        "Tidak dapat mengakses kamera. Gunakan input manual.",
+                    );
+                    setMode("manual");
+                }
             });
         return () => {
-            stopped = true;
-            if (scannerRef.current) {
-                scannerRef.current.stop().catch(() => {});
-            }
+            cancelled = true;
+            safeStop(scanner, runningRef);
         };
     }, [mode, nav]);
 
