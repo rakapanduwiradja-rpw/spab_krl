@@ -1,0 +1,47 @@
+{
+  "summary": "First testing run for SPAB KRL Ragam Berseri MVP. Backend: 24/24 pytest cases passed across auth, pelanggan, scan, pencatatan, tagihan/bayar (LUNAS+SEBAGIAN), dashboard, tren, anomali, tarif, petugas user mgmt, pengaturan with QRIS base64. Role enforcement (PETUGAS 403 on admin-only) verified. Frontend: Login (admin & petugas) redirects correctly; admin sidebar, dashboard, pelanggan list (10 seeded + TEST), tagihan filter+bayar dialog, tren (10 charts incl. anomali Dewi Kurnia), pengaturan all working. CRITICAL bug found on Petugas /petugas/scan — html5-qrcode raises uncaught 'Cannot stop, scanner is not running or paused' on page load, full-screen error overlay blocks Manual fallback UI. All other UI flows work.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "/app/frontend/src/pages/petugas/Scan.jsx",
+        "issue": "Uncaught runtime error 'Cannot stop, scanner is not running or paused' from html5-qrcode. Error overlay blocks the entire page, Manual input mode unreachable. Likely caused by calling html5QrCode.stop() in a useEffect cleanup without checking scanner state, or a double-stop on unmount/remount in StrictMode.",
+        "selector": "body > div (runtime-error-overlay)",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix /app/frontend/src/pages/petugas/Scan.jsx: guard html5QrCode.stop() with `if (scanner.getState() === Html5QrcodeScannerState.SCANNING || === PAUSED)` before calling stop(); wrap stop() in try/catch to swallow benign errors from html5-qrcode; ensure cleanup runs only when scanner was actually started (use a ref flag e.g. isStartedRef). Without this, petugas cannot use the Scan feature in browsers without granted camera permission or in StrictMode dev mode."
+  ],
+  "critical_code_review_comments": [
+    "server.py line 215 _next_qr_code() uses count_documents+1 which is not race-safe and will produce duplicate QR codes if two POSTs happen concurrently; consider using $inc on a counters collection or unique-index retry.",
+    "list_pencatatan enriches in-memory by loading ALL pelanggan into a dict per request — fine at 248 customers but document the assumption.",
+    "POST /api/pencatatan creates Pencatatan & Tagihan in two separate inserts without a transaction; on partial failure data can become inconsistent.",
+    "JWT_SECRET fallback absent (good), but no rotation/refresh flow.",
+    "CORS allow_origins falls back to '*' with allow_credentials=True which browsers reject — explicit origins should be required.",
+    "Dashboard 'aktivitas' performs N+1 db.pelanggan.find_one() per record; acceptable now but worth aggregating later."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24)",
+    "frontend": "~90% (one critical scan-page crash; all other flows pass)"
+  },
+  "test_credentials": "admin/admin123 and petugas/petugas123 (from /app/memory/test_credentials.md). Both work.",
+  "seed_data_creation": "Backend seeded 10 pelanggan, 3 months pencatatan/tagihan, 1 anomali (Dewi Kurnia 22 m³). Tests added: 1 TEST_Pelanggan + 1 TEST_ petugas user + bumped tarif row + updated pengaturan biaya_admin to 5500 with sample qris_image. Run uses current year so QR codes are MTR-2026-XXXX.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite at /app/backend/tests/backend_test.py — 24 tests, all passing. To re-run: `pytest /app/backend/tests/backend_test.py -v`. Dashboard now shows 11 PELANGGAN_AKTIF (10 seeded + TEST_Pelanggan) and pengaturan biaya_admin=5500 (changed from 5000). Anomali Dewi Kurnia present in /api/tren/anomali. Petugas /petugas/scan currently throws an uncaught html5-qrcode error on mount — must be fixed before re-testing the full Scan→Catat→Bayar flow. Manual fallback path could not be exercised because the error overlay blocks the UI. Petugas Beranda, Riwayat, Profil tabs all render fine. Admin Tagihan Bayar dialog opens correctly with TUNAI/QRIS/TRANSFER selector and nominal field.",
+  "rca of the issue": "RCA — Scan.jsx crash: html5-qrcode v2 throws when .stop() is called while scanner state != SCANNING|PAUSED. In React 18 StrictMode (dev) effects run mount→unmount→mount; the cleanup unconditionally calls html5QrCode.stop() even when start() never resolved. Reproduction: navigate to /petugas/scan in any browser (camera permission irrelevant). Mitigation: (a) check scanner.getState() before stop(); (b) wrap in try/catch; (c) guard with an isRunningRef set true only after start() promise resolves. Once fixed, retest Manual mode → enter MTR-2026-0001 → Catat → Bayar."
+}
