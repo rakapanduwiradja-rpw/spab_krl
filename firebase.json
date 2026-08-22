@@ -1,0 +1,190 @@
+{
+  "hosting": {
+    "public": "frontend/build",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/auth_login",
+        "function": "auth_login",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/auth_me",
+        "function": "auth_me",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/auth_ganti_password",
+        "function": "auth_ganti_password",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/meteran_scan",
+        "function": "meteran_scan",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pelanggan_list",
+        "function": "pelanggan_list",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pelanggan_create",
+        "function": "pelanggan_create",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pelanggan_detail",
+        "function": "pelanggan_detail",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pelanggan_update",
+        "function": "pelanggan_update",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pencatatan_create",
+        "function": "pencatatan_create",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pencatatan_list",
+        "function": "pencatatan_list",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pencatatan_update",
+        "function": "pencatatan_update",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pencatatan_hapus",
+        "function": "pencatatan_hapus",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tagihan_list",
+        "function": "tagihan_list",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tagihan_detail",
+        "function": "tagihan_detail",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tagihan_bayar",
+        "function": "tagihan_bayar",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/dashboard_stats",
+        "function": "dashboard_stats",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tren_pemakaian",
+        "function": "tren_pemakaian",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tren_anomali",
+        "function": "tren_anomali",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tarif_list",
+        "function": "tarif_list",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/tarif_create",
+        "function": "tarif_create",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/petugas_list",
+        "function": "petugas_list",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/petugas_create",
+        "function": "petugas_create",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/petugas_update",
+        "function": "petugas_update",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/petugas_reset_password",
+        "function": "petugas_reset_password",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/petugas_nonaktif",
+        "function": "petugas_nonaktif",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pengaturan_get",
+        "function": "pengaturan_get",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pengaturan_update",
+        "function": "pengaturan_update",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/seed_init",
+        "function": "seed_init",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "/api/pelanggan_hapus",
+        "function": "pelanggan_hapus",
+        "region": "asia-southeast2"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|map)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      }
+    ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "runtime": "python311"
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

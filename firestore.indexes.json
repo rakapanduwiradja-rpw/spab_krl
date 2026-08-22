@@ -1,0 +1,88 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "tagihan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" },
+        { "fieldPath": "status_bayar", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tagihan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tagihan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status_bayar", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tagihan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rt", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tagihan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rt", "order": "ASCENDING" },
+        { "fieldPath": "status_bayar", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pencatatan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pencatatan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" },
+        { "fieldPath": "periode_bulan", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pencatatan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "periode_bulan", "order": "ASCENDING" },
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pencatatan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "periode_bulan", "order": "ASCENDING" },
+        { "fieldPath": "is_anomali", "order": "ASCENDING" },
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pencatatan",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_pelanggan", "order": "ASCENDING" },
+        { "fieldPath": "waktu_catat", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
