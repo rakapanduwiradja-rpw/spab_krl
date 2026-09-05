@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: spab-krl-backend
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -w 2 -b 0.0.0.0:$PORT app:app"
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: spab_krl
+      - key: JWT_SECRET
+        sync: false
+      - key: SEED_SECRET
+        sync: false
