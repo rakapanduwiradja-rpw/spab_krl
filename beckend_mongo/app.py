@@ -18,8 +18,8 @@ logger = logging.getLogger("spab")
 # =========================================================
 #  Konfigurasi Mongo & JWT (pengganti Firebase Admin SDK)
 # =========================================================
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb+srv://rakapanduwiradja_db_user:<g6qTOOGcupXxUjEk>@spabragam.i92o4uj.mongodb.net/?appName=spabragam")
-MONGODB_DB_NAME = os.environ.get("MONGODB_DB_NAME", "spab_krl")
+MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb+srv://spab_krl_ragam:<4fEsSyOT139WDWNy>@spabragam.i92o4uj.mongodb.net/?appName=spabragam")
+MONGODB_DB_NAME = os.environ.get("MONGODB_DB_NAME", "spabragam")
 JWT_SECRET = os.environ.get("JWT_SECRET", "d476d5e6c6a241e4a21186e98db61ffe")
 JWT_ALGO = "HS256"
 JWT_EXPIRES_DAYS = int(os.environ.get("JWT_EXPIRES_DAYS", "30"))
@@ -1326,6 +1326,20 @@ def meteran_scan(req):
 #  Flask app + router (pengganti Firebase Cloud Functions)
 # =========================================================
 app = Flask(__name__)
+
+# CORS lewat flask-cors dipasang di level app, jadi SELALU terpasang di semua
+# respons (termasuk saat terjadi error tak terduga) -- bukan cuma respons yang
+# lewat add_cors() manual. Ini mencegah error asli (mis. 500) tersamar jadi
+# "CORS error" di browser.
+from flask_cors import CORS as _FlaskCORS
+_FlaskCORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
+
+
+@app.errorhandler(Exception)
+def _handle_unexpected_error(e):
+    logger.exception("Unhandled error: %s", e)
+    return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
 
 ROUTES = {
     "auth_login": auth_login,
