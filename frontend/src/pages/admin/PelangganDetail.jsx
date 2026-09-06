@@ -46,7 +46,10 @@ export default function PelangganDetail() {
         .then(r => setData(r.data.data))
         .catch(ex => toast.error(formatApiError(ex)));
 
-    useEffect(() => { load(); }, [id]);
+useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [id]);
 
     if (!data) return <div className="text-slate-500 p-6">Memuat...</div>;
     const { pelanggan: p, pencatatan, tagihan } = data;
