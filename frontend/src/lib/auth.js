@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 
-// Pakai /api prefix - sama domain, tidak ada CORS
-const BASE = "/api";
+// Sebelumnya: BASE = "/api" -> lewat Firebase Hosting rewrites ke Cloud Functions.
+// Sekarang: langsung ke backend Flask di Render (Cloud Functions tidak dipakai lagi).
+// .replace(/\/$/, "") menghapus trailing slash supaya tidak jadi "//auth_login".
+const BASE = (process.env.REACT_APP_API_BASE_URL || "https://spab-krl.onrender.com").replace(/\/$/, "");
 
 const AuthCtx = createContext(null);
 
