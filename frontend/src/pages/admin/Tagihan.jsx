@@ -37,19 +37,36 @@ import { StatusBadge } from "./PelangganDetail";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
+function getPeriodeOptions() {
+    const opts = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const iso = `${y}-${m}-01T00:00:00+00:00`;
+        const label = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+        opts.push({ value: iso, label });
+    }
+    return opts;
+}
+
 export default function Tagihan() {
     const [items, setItems] = useState([]);
     const [status, setStatus] = useState("ALL");
     const [rt, setRt] = useState("ALL");
+    const [periode, setPeriode] = useState("ALL");
     const [q, setQ] = useState("");
     const [bayar, setBayar] = useState(null); // tagihan obj
     const [metode, setMetode] = useState("TUNAI");
     const [nominal, setNominal] = useState(0);
+    const periodeOptions = getPeriodeOptions();
 
     const load = async () => {
         const params = {};
         if (status !== "ALL") params.status = status;
         if (rt !== "ALL") params.rt = rt;
+        if (periode !== "ALL") params.periode = periode;
         if (q) params.q = q;
         const r = await api.get("/tagihan_list", { params });
         setItems(r.data.data);
@@ -57,7 +74,7 @@ export default function Tagihan() {
 
     useEffect(() => {
         load(); // eslint-disable-next-line
-    }, [status, rt]);
+    }, [status, rt, periode]);
 
     const kirimWABatch = async () => {
         const belum = items.filter((t) => t.status_bayar !== "LUNAS");
@@ -155,6 +172,22 @@ export default function Tagihan() {
                         <SelectItem value="RT01">RT 01</SelectItem>
                         <SelectItem value="RT02">RT 02</SelectItem>
                         <SelectItem value="RT03">RT 03</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={periode} onValueChange={setPeriode}>
+                    <SelectTrigger
+                        className="w-[170px]"
+                        data-testid="select-periode-tagihan"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">Semua Periode</SelectItem>
+                        {periodeOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                                {o.label}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
                 <Button variant="outline" onClick={load}>

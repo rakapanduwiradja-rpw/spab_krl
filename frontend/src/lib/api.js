@@ -1,8 +1,10 @@
 import axios from "axios";
 
-// Pakai /api prefix - routing lewat Firebase Hosting rewrites
-// Ini menghilangkan CORS karena request ke domain yang sama
-const api = axios.create({ baseURL: "/api" });
+// Sebelumnya: baseURL "/api" + Firebase Hosting rewrites -> Cloud Functions.
+// Sekarang: langsung ke backend Flask di Render (Cloud Functions tidak dipakai lagi).
+const api = axios.create({
+    baseURL: process.env.REACT_APP_API_BASE_URL || "https://spab-krl.vercel.app/",
+});
 
 api.interceptors.request.use((cfg) => {
     const token =
