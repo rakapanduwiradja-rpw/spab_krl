@@ -961,27 +961,27 @@ def seed_init(req):
     if req.method == "OPTIONS":
         return add_cors({})
     secret = req.args.get("secret", "")
-    if secret != os.environ.get("SEED_SECRET", "GANTI_SEED_SECRET_ANDA"):
+    if secret != os.environ.get("SEED_SECRET", "spabkrl007ragam"):
         return add_cors(err("Tidak diizinkan", 403))
     db = get_db()
     results = []
     if not find_one(db, "users", "username", "admin"):
         try:
-            fb_user = firebase_auth.create_user(email="admin@spab.internal", password="admin123", display_name="Administrator")
+            fb_user = firebase_auth.create_user(email="admin@spab.internal", password="spabkrlragamberseri007", display_name="Administrator")
             uid = fb_user.uid
         except Exception:
             uid = str(uuid.uuid4())
         db.collection("users").document(uid).set({"nama": "Administrator", "username": "admin",
-            "password_hash": hash_password("admin123"), "role": "ADMIN", "aktif": True, "dibuat_pada": iso(now_utc())})
+            "password_hash": hash_password("spabkrlragamberseri007"), "role": "ADMIN", "aktif": True, "dibuat_pada": iso(now_utc())})
         results.append("admin user dibuat")
     if not find_one(db, "users", "username", "petugas"):
         try:
-            fb_user2 = firebase_auth.create_user(email="petugas@spab.internal", password="petugas123", display_name="Pak Budi")
+            fb_user2 = firebase_auth.create_user(email="petugas@spab.internal", password="123456", display_name="Pak Budi")
             uid2 = fb_user2.uid
         except Exception:
             uid2 = str(uuid.uuid4())
         db.collection("users").document(uid2).set({"nama": "Pak Budi", "username": "petugas",
-            "password_hash": hash_password("petugas123"), "role": "PETUGAS", "aktif": True, "dibuat_pada": iso(now_utc())})
+            "password_hash": hash_password("123456"), "role": "PETUGAS", "aktif": True, "dibuat_pada": iso(now_utc())})
         results.append("petugas user dibuat")
     if not list(db.collection("tarif").limit(1).stream()):
         db.collection("tarif").document(str(uuid.uuid4())).set({"batas_bawah_m3": 0, "batas_atas_m3": None,

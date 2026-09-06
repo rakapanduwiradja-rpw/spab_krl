@@ -43,6 +43,7 @@ export default function Beranda() {
     const [belum, setBelum] = useState([]);
     const [showBelumList, setShowBelumList] = useState(false);
     const periodeOptions = getPeriodeOptions();
+    const [periodeReady, setPeriodeReady] = useState(false);
     const [pencatatanPeriode, setPencatatanPeriode] = useState(() => {
         const now = new Date();
         const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -52,9 +53,17 @@ export default function Beranda() {
     });
 
     useEffect(() => {
-        api.get("/dashboard_stats", { params: { pencatatan_periode: pencatatanPeriode } }).then((r) => setStats(r.data.data));
+        api.get("/dashboard_stats", {
+            params: pencatatanPeriode ? { pencatatan_periode: pencatatanPeriode } : {},
+        }).then((r) => {
+            setStats(r.data.data);
+            if (!periodeReady) {
+                setPencatatanPeriode(r.data.data.pencatatan_periode);
+                setPeriodeReady(true);
+            }
+        });
     }, [pencatatanPeriode]);
-
+    
     useEffect(() => {
         api.get("/tagihan_list", { params: { status: "BELUM" } }).then((r) =>
             setBelum(r.data.data.slice(0, 5)),

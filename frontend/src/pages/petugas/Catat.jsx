@@ -9,14 +9,17 @@ import { Textarea } from "../../components/ui/textarea";
 import { Badge } from "../../components/ui/badge";
 import { formatRupiah, formatNumber, formatPeriode } from "../../lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, Loader2, AlertCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, AlertCircle, AlertTriangle, CalendarClock } from "lucide-react";
 
 export default function Catat() {
     const { qr } = useParams();
     const [searchParams] = useSearchParams();
     const _now = new Date();
-    const _defPeriode = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-01T00:00:00+00:00`;
-    const periode = searchParams.get("periode") || _defPeriode;
+    const _defPeriode = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-01T00:00:00+00:00`;
+
+    // periode sekarang STATE (bukan const langsung dari URL) supaya bisa
+    // di-override kalau ternyata ada bulan lebih lama yang belum dicatat.
+    const [periode, setPeriode] = useState(searchParams.get("periode") || _defPeriode);
     const nav = useNavigate();
     const [info, setInfo] = useState(null);
     const [err, setErr] = useState("");
@@ -31,36 +34,46 @@ export default function Catat() {
     const fileRef = useRef(null);
 
     useEffect(() => {
-        // Debug: tampilkan token di console
         const token = localStorage.getItem("spab_id_token");
-        const user = localStorage.getItem("spab_user");
-        console.log("[SPAB Debug] QR:", qr);
-        console.log("[SPAB Debug] Token ada:", !!token);
-        console.log("[SPAB Debug] Token (10 char):", token ? token.substring(0, 10) + "..." : "KOSONG");
-        console.log("[SPAB Debug] User:", user);
 
-        api.get("/meteran_scan", { params: { qr } })
+        // Kirim periode yang sedang dipilih supaya "sudah_dicatat_periode"
+        // dicek untuk periode yang benar, bukan selalu bulan berjalan.
+        api.get("/meteran_scan", { params: { qr, periode } })
             .then((r) => {
-                setInfo(r.data.data);
-                if (r.data.data?.sudah_dicatat_periode) setDuplikat(true);
+                const data = r.data.data;
+                setInfo(data);
+                setDuplikat(!!data?.sudah_dicatat_periode);
             })
             .catch((ex) => {
                 const status = ex?.response?.status;
                 const msg = formatApiError(ex);
-                console.error("[SPAB Debug] Meteran scan error:", status, msg, ex?.response?.data);
                 setErr(msg);
-                // Tampilkan detail untuk debugging
                 setErrDetail(`Status: ${status || "Network Error (no response)"} | URL: ${ex?.config?.url || "?"} | Token: ${token ? "ADA" : "TIDAK ADA"}`);
             });
 
         api.get("/tarif_list").then((r) => {
             if (r.data.data?.[0]) setTarif(Number(r.data.data[0].harga_per_m3));
-        }).catch(e => console.warn("[SPAB] tarif error:", e?.response?.status));
+        }).catch(() => {});
 
         api.get("/pengaturan_get").then((r) =>
             setBiayaAdmin(Number(r.data.data?.biaya_admin || 5000))
-        ).catch(e => console.warn("[SPAB] pengaturan error:", e?.response?.status));
-    }, [qr]);
+        ).catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [qr, periode]);
+
+    // Bandingkan periode yang sedang dipilih dengan saran backend (periode
+    // tertua yang belum dicatat sejak pelanggan ini terdaftar). Kalau petugas
+    // memilih bulan yang LEBIH BARU dari saran tsb -> ada bulan bolong yang
+    // terlewat, tampilkan peringatan.
+    const periodeDisarankan = info?.periode_disarankan;
+    const adaBulanTerlewat =
+        periodeDisarankan &&
+        periodeDisarankan.slice(0, 7) !== periode.slice(0, 7) &&
+        periodeDisarankan.slice(0, 7) < periode.slice(0, 7);
+
+    const pakaiPeriodeDisarankan = () => {
+        if (periodeDisarankan) setPeriode(periodeDisarankan);
+    };
 
     const onFoto = (f) => {
         if (!f) return;
@@ -78,15 +91,15 @@ export default function Catat() {
                 angka_meter_akhir: Number(angka),
                 foto_meter: foto,
                 catatan,
-                periode: periode,   // ✅ FIX: kirim periode dari query param
+                periode: periode,
             });
             toast.success("Pencatatan disimpan");
             nav(`/petugas/nota/${r.data.data.tagihan.id}`);
         } catch (ex) {
             const msg = formatApiError(ex);
-            if (msg.includes("sudah dicatat")) {
+            if (msg.includes("sudah")) {
                 setDuplikat(true);
-                toast.error("Pelanggan ini sudah dicatat bulan ini!", { duration: 5000 });
+                toast.error("Pelanggan ini sudah dicatat untuk periode ini!", { duration: 5000 });
             } else {
                 toast.error(msg);
             }
@@ -147,11 +160,32 @@ export default function Catat() {
             </header>
 
             <div className="p-5 space-y-4">
+                {adaBulanTerlewat && (
+                    <div className="p-3 rounded-lg bg-blue-50 border border-blue-300 flex items-start gap-2 text-sm">
+                        <CalendarClock className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                            <div className="font-semibold text-blue-700">
+                                Ada periode lebih lama yang belum dicatat
+                            </div>
+                            <div className="text-xs text-blue-600 mt-0.5">
+                                Pelanggan ini belum dicatat untuk {formatPeriode(periodeDisarankan)}.
+                                Sebaiknya catat periode itu dulu sebelum lanjut ke {formatPeriode(periode)}.
+                            </div>
+                            <Button size="sm" variant="outline" className="mt-2 h-7 text-xs"
+                                onClick={pakaiPeriodeDisarankan}>
+                                Ganti ke {formatPeriode(periodeDisarankan)}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {duplikat && (
                     <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 flex items-start gap-2 text-sm">
                         <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                         <div>
-                            <div className="font-semibold text-amber-700">Sudah dicatat bulan ini!</div>
+                            <div className="font-semibold text-amber-700">
+                                Sudah dicatat untuk {formatPeriode(periode)}!
+                            </div>
                             <div className="text-xs text-amber-600 mt-0.5">
                                 Jika ada kesalahan, minta admin untuk memperbaiki dari dashboard.
                             </div>

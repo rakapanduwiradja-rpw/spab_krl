@@ -795,17 +795,24 @@ def dashboard_stats(req):
     belum = [d.to_dict() for d in db.collection("tagihan").where("status_bayar", "in", ["BELUM", "SEBAGIAN"]).stream()]
     tunggakan_total = sum(float(x.get("sisa_tagihan", x["total_tagihan"])) for x in belum)
 
-    # Per-RT progress berdasarkan periode_catat
+    # Per-RT progress berdasarkan periode_catat.
+    # Catatan: sebelumnya kode ini query dengan ids_rt[:10], yang diam-diam
+    # memotong RT dengan >10 pelanggan sehingga progres yang ditampilkan
+    # tidak sinkron dengan data pencatatan yang sebenarnya.
+    # Sekarang kita pakai `all_pencatatan` yang sudah diambil sekali di atas
+    # dan filter di Python, jadi semua pelanggan ikut terhitung.
+    catat_by_pelanggan_periode = {}
+    for d in all_pencatatan:
+        if d.get("periode_bulan", "")[:7] == periode_catat_prefix:
+            catat_by_pelanggan_periode[d.get("id_pelanggan")] = d
+
     rt_stats = []
     for rt in ["RT01", "RT02", "RT03"]:
         rt_pel = list(db.collection("pelanggan").where("rt", "==", rt).where("status_aktif", "==", True).stream())
         total_rt = len(rt_pel)
-        ids_rt = [d.id for d in rt_pel]
-        # Cek siapa yang sudah dicatat di periode_catat
-        catat_rt = [d.to_dict() for d in db.collection("pencatatan").where("id_pelanggan", "in", ids_rt[:10]).stream()] if ids_rt else []
-        sudah_ids = {d.get("id_pelanggan") for d in catat_rt if d.get("periode_bulan","")[:7] == periode_catat_prefix}
+        sudah_ids = {pel_doc.id for pel_doc in rt_pel if pel_doc.id in catat_by_pelanggan_periode}
         sudah = len(sudah_ids)
-        anomali = sum(1 for d in catat_rt if d.get("periode_bulan","")[:7] == periode_catat_prefix and d.get("is_anomali"))
+        anomali = sum(1 for pid in sudah_ids if catat_by_pelanggan_periode[pid].get("is_anomali"))
         # Daftar pelanggan yang belum dicatat
         belum_list = []
         for pel_doc in rt_pel:
@@ -1153,7 +1160,7 @@ def petugas_nonaktif(req):
 
 
 def pencatatan_update(req):
-    """PUT /pencatatan_update?id=xxx — admin koreksi pencatatan."""
+    """PUT /pencatatan_update?id=xxx — admin koreksi pencatatan (meter awal/akhir dan/atau periode)."""
     if req.method == "OPTIONS":
         return add_cors({})
     user, error = require_role(req, "ADMIN")
@@ -1167,15 +1174,34 @@ def pencatatan_update(req):
     if not doc.exists:
         return add_cors(err("Pencatatan tidak ditemukan", 404))
     old = doc.to_dict()
+    pid = old["id_pelanggan"]
 
     angka_kini = float(body.get("angka_meter_akhir", old["angka_meter_akhir"]))
-    angka_lalu = float(old["angka_meter_awal"])
+    angka_lalu = float(body.get("angka_meter_awal", old["angka_meter_awal"]))
     if angka_kini < angka_lalu:
         return add_cors(err(f"Angka meter akhir ({angka_kini}) < meter awal ({angka_lalu})", 400))
 
+    # Periode boleh dikoreksi juga (mis. petugas salah pilih bulan)
+    periode_baru = old.get("periode_bulan", "")
+    if "periode" in body or "periode_bulan" in body:
+        periode_baru = parse_periode(body.get("periode") or body.get("periode_bulan"))
+        if periode_baru[:7] != old.get("periode_bulan", "")[:7]:
+            # Cek duplikat: pelanggan ini sudah dicatat di periode tujuan?
+            existing = list(
+                db.collection("pencatatan").where("id_pelanggan", "==", pid).stream()
+            )
+            dup = [
+                d for d in existing
+                if d.id != cid and d.to_dict().get("periode_bulan", "")[:7] == periode_baru[:7]
+            ]
+            if dup:
+                return add_cors(err(f"Pelanggan ini sudah punya pencatatan untuk periode {periode_baru[:7]}", 400))
+
     pemakaian = round(angka_kini - angka_lalu, 2)
     upd = {
+        "angka_meter_awal": angka_lalu,
         "angka_meter_akhir": angka_kini,
+        "periode_bulan": periode_baru,
         "pemakaian_m3": pemakaian,
         "catatan": body.get("catatan", old.get("catatan", "")),
         "dikoreksi": True,
@@ -1183,10 +1209,15 @@ def pencatatan_update(req):
     }
     ref.update(upd)
 
-    # Update angka meter terakhir di pelanggan
-    db.collection("pelanggan").document(old["id_pelanggan"]).update({"angka_meter_terakhir": angka_kini})
+    # Update angka meter terakhir di pelanggan HANYA jika record ini adalah
+    # pencatatan terbaru milik pelanggan tsb (hindari menimpa data terbaru
+    # ketika yang dikoreksi justru record periode lama).
+    all_catat_pid = list(db.collection("pencatatan").where("id_pelanggan", "==", pid).stream())
+    all_catat_pid.sort(key=lambda d: d.to_dict().get("periode_bulan", ""), reverse=True)
+    if all_catat_pid and all_catat_pid[0].id == cid:
+        db.collection("pelanggan").document(pid).update({"angka_meter_terakhir": angka_kini})
 
-    # Update tagihan terkait
+    # Update tagihan terkait (pemakaian, biaya, dan periode jika berubah)
     tagihan_docs = list(db.collection("tagihan").where("id_pencatatan", "==", cid).limit(1).stream())
     if tagihan_docs:
         t_ref = tagihan_docs[0].reference
@@ -1196,6 +1227,7 @@ def pencatatan_update(req):
         biaya_air = round(pemakaian * tarif, 0)
         total_baru = biaya_air + biaya_admin
         t_ref.update({
+            "periode_bulan": periode_baru,
             "pemakaian_m3": pemakaian,
             "biaya_air": biaya_air,
             "total_tagihan": total_baru,
@@ -1313,6 +1345,33 @@ def meteran_scan(req):
                .where("periode_bulan", "==", periode_req).limit(1).stream())
     sudah_dicatat = len(dup) > 0
 
+    # Tentukan periode yang SEHARUSNYA dicatat: bulan tertua yang belum
+    # tercatat sejak pelanggan ini terdaftar/dipasang meterannya -- supaya
+    # petugas tidak "loncat" ke bulan berjalan padahal ada bulan lama yang
+    # masih bolong (dan tidak mundur ke sebelum pelanggan terdaftar untuk
+    # pelanggan yang baru daftar).
+    tanggal_mulai_raw = p.get("tanggal_pasang") or p.get("tanggal_daftar")
+    try:
+        cleaned_mulai = (tanggal_mulai_raw or "").strip().replace("Z", "+00:00")
+        bulan_mulai = month_start(datetime.fromisoformat(cleaned_mulai))
+    except Exception:
+        bulan_mulai = month_start(now_utc())
+    bulan_ini = month_start(now_utc())
+
+    periode_tercatat = {
+        d.to_dict().get("periode_bulan", "")[:7]
+        for d in db.collection("pencatatan").where("id_pelanggan", "==", pid).stream()
+    }
+    daftar_belum_dicatat = []
+    cursor = bulan_mulai
+    pengaman = 0
+    while cursor <= bulan_ini and pengaman < 60:
+        if iso(cursor)[:7] not in periode_tercatat:
+            daftar_belum_dicatat.append(iso(cursor))
+        cursor = add_months(cursor, 1)
+        pengaman += 1
+    periode_disarankan = daftar_belum_dicatat[0] if daftar_belum_dicatat else iso(bulan_ini)
+
     return add_cors(ok({
         "pelanggan": p,
         "angka_meter_awal": angka_lalu,
@@ -1320,6 +1379,8 @@ def meteran_scan(req):
         "tunggakan_list": tunggakan,
         "total_tunggakan": total_tunggakan,
         "sudah_dicatat_periode": sudah_dicatat,
+        "periode_disarankan": periode_disarankan,
+        "daftar_bulan_belum_dicatat": daftar_belum_dicatat,
     }))
 
 # =========================================================
