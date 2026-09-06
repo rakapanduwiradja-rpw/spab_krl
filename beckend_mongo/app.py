@@ -18,7 +18,7 @@ logger = logging.getLogger("spab")
 # =========================================================
 #  Konfigurasi Mongo & JWT (pengganti Firebase Admin SDK)
 # =========================================================
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb+srv://spab_krl_ragam:<4fEsSyOT139WDWNy>@spabragam.i92o4uj.mongodb.net/?appName=spabragam")
+MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb+srv://spab_krl_ragam:4fEsSyOT139WDWNy@spabragam.i92o4uj.mongodb.net/?appName=spabragam")
 MONGODB_DB_NAME = os.environ.get("MONGODB_DB_NAME", "spabragam")
 JWT_SECRET = os.environ.get("JWT_SECRET", "d476d5e6c6a241e4a21186e98db61ffe")
 JWT_ALGO = "HS256"
