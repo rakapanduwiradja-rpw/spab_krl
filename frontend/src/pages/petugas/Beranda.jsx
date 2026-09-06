@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -43,7 +43,7 @@ export default function Beranda() {
     const [belum, setBelum] = useState([]);
     const [showBelumList, setShowBelumList] = useState(false);
     const periodeOptions = getPeriodeOptions();
-    const [periodeReady, setPeriodeReady] = useState(false);
+    const periodeReadyRef = useRef(false);
     const [pencatatanPeriode, setPencatatanPeriode] = useState(() => {
         const now = new Date();
         const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -57,9 +57,9 @@ export default function Beranda() {
             params: pencatatanPeriode ? { pencatatan_periode: pencatatanPeriode } : {},
         }).then((r) => {
             setStats(r.data.data);
-            if (!periodeReady) {
+            if (!periodeReadyRef.current) {
                 setPencatatanPeriode(r.data.data.pencatatan_periode);
-                setPeriodeReady(true);
+                periodeReadyRef.current = true;
             }
         });
     }, [pencatatanPeriode]);
